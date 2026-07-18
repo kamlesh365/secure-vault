@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Secure Vault — a private, client-side password manager. All data stays in your browser." />
+  <title>Secure Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+/* ── Design tokens ── */
+:root {
+  --bg-base: #0c0e14;
+  --bg-surface: #13161f;
+  --bg-elevated: #1a1e2a;
+  --bg-hover: #222736;
+  --bg-input: #0f1219;
+
+  --border: rgba(255, 255, 255, 0.07);
+  --border-focus: rgba(99, 179, 237, 0.55);
+
+  --text-primary: #eef0f6;
+  --text-secondary: #8b93a8;
+  --text-muted: #5c6378;
+
+  --accent: #4f9cf9;
+  --accent-hover: #3d8ae8;
+  --accent-glow: rgba(79, 156, 249, 0.18);
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --danger-hover: #ef4444;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--border);
+  --shadow-glow: 0 0 40px var(--accent-glow);
+
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --header-h: 64px;
+  --transition: 180ms ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  line-height: 1.5;
+}
+
+.hidden { display: none !important; }
+
+/* ── Lock screen ── */
+.lock-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79, 156, 249, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(99, 102, 241, 0.08), transparent),
+    var(--bg-base);
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 36px;
+  box-shadow: var(--shadow-glow), var(--shadow-card);
+  animation: fadeUp 0.5s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lock-logo {
+  width: 56px;
+  height: 56px;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+
+.lock-card h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.lock-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.925rem;
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+.lock-form { display: flex; flex-direction: column; gap: 16px; }
+
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+
+.field-group label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="email"] {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.input-with-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-action input { padding-right: 44px; }
+
+.input-with-action .icon-btn {
+  position: absolute;
+  right: 4px;
+}
+
+.error-msg {
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+.lock-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 24px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.lock-hint svg { flex-shrink: 0; margin-top: 2px; opacity: 0.7; }
+
+.existing-users {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.existing-users-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.user-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.user-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.user-chip-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.user-badge::before {
+  content: attr(data-initial);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--badge-color, var(--accent));
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), transform 80ms ease;
+  white-space: nowrap;
+}
+
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-full { width: 100%; padding: 12px; font-size: 0.9375rem; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+}
+
+.btn-danger:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--danger-hover);
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.8125rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn svg { width: 16px; height: 16px; }
+
+/* ── Header ── */
+.app { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  background: rgba(12, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-glow);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+}
+
+.brand-icon svg { width: 18px; height: 18px; }
+
+.brand-name {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.search-wrap {
+  flex: 1;
+  max-width: 480px;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-wrap input {
+  padding-left: 40px;
+  padding-right: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+}
+
+.search-kbd {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Main content ── */
+.main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.stats-sep { opacity: 0.4; }
+
+.save-status.saved { color: var(--success); }
+.save-status.saving { color: var(--warning); }
+.save-status.error { color: var(--danger); }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 80px 24px;
+  animation: fadeUp 0.4s ease;
+}
+
+.empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  margin-bottom: 24px;
+}
+
+/* ── App grid & cards ── */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.app-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--transition), transform var(--transition);
+  animation: fadeUp 0.35s ease backwards;
+}
+
+.app-card:hover { border-color: rgba(255, 255, 255, 0.12); }
+
+.app-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.app-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.app-name {
+  flex: 1;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  outline: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  min-width: 0;
+  cursor: text;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.app-name:hover { background: var(--bg-hover); }
+
+.app-name:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-input);
+}
+
+.app-name:empty::before {
+  content: "Application name";
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.app-card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.app-card:hover .app-card-actions { opacity: 1; }
+
+.app-card-body {
+  padding: 12px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Field rows ── */
+.field-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.field-row:last-of-type { border-bottom: none; }
+
+.field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  outline: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  cursor: text;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.field-label:hover { background: var(--bg-hover); }
+
+.field-label:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.field-label:empty::before {
+  content: "Label";
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.field-value-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.field-value {
+  flex: 1;
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  outline: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin: -5px -8px;
+  min-width: 0;
+  word-break: break-all;
+  cursor: text;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.field-value:hover { background: var(--bg-hover); }
+
+.field-value:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-input);
+}
+
+.field-value:empty::before {
+  content: "Click to edit…";
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-style: italic;
+  pointer-events: none;
+}
+
+.field-value.secret {
+  -webkit-text-security: disc;
+  text-security: disc;
+}
+
+.field-value.secret.revealed {
+  -webkit-text-security: none;
+  text-security: none;
+}
+
+.field-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.field-row:hover .field-actions { opacity: 1; }
+
+.add-field-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.add-field-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.add-field-btn svg { width: 14px; height: 14px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+  z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .search-wrap { order: 3; max-width: 100%; flex-basis: 100%; }
+
+  .brand-name { display: none; }
+
+  .user-badge { display: none; }
+
+  .main { padding: 16px; }
+
+  .app-grid { grid-template-columns: 1fr; }
+
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .field-actions,
+  .app-card-actions { opacity: 1; }
+
+  .search-kbd { display: none; }
+}
+
+@media (max-width: 480px) {
+  .lock-card { padding: 28px 24px; }
+
+  #add-app-btn span { display: none; }
+}
+
+</style>
+</head>
+<body>
+  <!-- Lock screen -->
+  <div id="lock-screen" class="lock-screen">
+    <div class="lock-card">
+      <div class="lock-logo" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="20" width="32" height="24" rx="4" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M16 20V14C16 9.58172 19.5817 6 24 6C28.4183 6 32 9.58172 32 14V20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="24" cy="32" r="3" fill="currentColor"/>
+        </svg>
+      </div>
+      <h1>Secure Vault</h1>
+      <p class="lock-subtitle">Your passwords never leave this device. Everything is encrypted in your browser.</p>
+
+      <form id="unlock-form" class="lock-form" autocomplete="off">
+        <div class="field-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="Your username" required autofocus autocomplete="username" />
+        </div>
+        <div id="existing-users" class="existing-users hidden">
+          <span class="existing-users-label">Quick select</span>
+          <div id="user-chips" class="user-chips"></div>
+        </div>
+        <div class="field-group">
+          <label for="master-password">Master password</label>
+          <div class="input-with-action">
+            <input type="password" id="master-password" placeholder="Enter master password" required autocomplete="current-password" />
+            <button type="button" class="icon-btn toggle-password" data-target="master-password" aria-label="Show password">
+              <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="confirm-password-group" class="field-group hidden">
+          <label for="confirm-password">Confirm master password</label>
+          <input type="password" id="confirm-password" placeholder="Confirm master password" />
+        </div>
+        <p id="lock-error" class="error-msg hidden" role="alert"></p>
+        <button type="submit" id="unlock-btn" class="btn btn-primary btn-full">Unlock Vault</button>
+      </form>
+
+      <p class="lock-hint">
+        <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 10.5a.75.75 0 110-1.5.75.75 0 010 1.5zM8 4a.875.875 0 00-.875.875v3.25a.875.875 0 001.75 0v-3.25A.875.875 0 008 4z"/></svg>
+        No server, no database — each user gets a separate encrypted vault in local storage.
+      </p>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="app hidden">
+    <header class="header">
+      <div class="header-brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <span class="brand-name">Secure Vault</span>
+        <span id="current-user-badge" class="user-badge" title="Signed-in user"></span>
+      </div>
+
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" id="search-input" placeholder="Search applications…" autocomplete="off" />
+        <kbd class="search-kbd">/</kbd>
+      </div>
+
+      <div class="header-actions">
+        <button id="add-app-btn" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          New App
+        </button>
+        <button id="export-btn" class="btn btn-ghost" title="Export encrypted backup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </button>
+        <button id="import-btn" class="btn btn-ghost" title="Import backup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </button>
+        <input type="file" id="import-file" accept=".json,.vault" hidden />
+        <button id="lock-btn" class="btn btn-ghost" title="Lock vault">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      <div id="stats-bar" class="stats-bar">
+        <span id="app-count">0 applications</span>
+        <span class="stats-sep">·</span>
+        <span id="save-status" class="save-status saved">Saved</span>
+      </div>
+
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><rect x="12" y="24" width="40" height="32" rx="4"/><path d="M20 24V18a12 12 0 0124 0v6"/></svg>
+        </div>
+        <h2>No applications yet</h2>
+        <p>Create your first application to start storing credentials securely.</p>
+        <button id="empty-add-btn" class="btn btn-primary">Create Application</button>
+      </div>
+
+      <div id="no-results" class="empty-state hidden">
+        <h2>No matches found</h2>
+        <p>Try a different search term or clear the filter.</p>
+      </div>
+
+      <div id="app-grid" class="app-grid"></div>
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script>
+/**
+ * Secure Vault — client-side encrypted password manager
+ * All data is encrypted with AES-GCM and stored in localStorage.
+ */
+
+const USERS_INDEX_KEY = 'secure_vault_users';
+const LAST_USER_KEY = 'secure_vault_last_user';
+const LEGACY_STORAGE_KEY = 'secure_vault_data';
+const PBKDF2_ITERATIONS = 310000;
+
+const AVATAR_COLORS = [
+  '#4f9cf9', '#8b5cf6', '#ec4899', '#f97316',
+  '#14b8a6', '#eab308', '#6366f1', '#06b6d4',
+];
+
+// ── State ──
+let vault = { applications: [] };
+let currentUsername = '';
+let masterPassword = '';
+let saveTimer = null;
+let searchQuery = '';
+
+// ── DOM refs ──
+const $ = (sel) => document.querySelector(sel);
+
+const lockScreen = $('#lock-screen');
+const appEl = $('#app');
+const unlockForm = $('#unlock-form');
+const usernameInput = $('#username');
+const existingUsersEl = $('#existing-users');
+const userChipsEl = $('#user-chips');
+const masterPasswordInput = $('#master-password');
+const confirmPasswordGroup = $('#confirm-password-group');
+const confirmPasswordInput = $('#confirm-password');
+const lockError = $('#lock-error');
+const unlockBtn = $('#unlock-btn');
+const searchInput = $('#search-input');
+const appGrid = $('#app-grid');
+const emptyState = $('#empty-state');
+const noResults = $('#no-results');
+const appCount = $('#app-count');
+const saveStatus = $('#save-status');
+const currentUserBadge = $('#current-user-badge');
+const toast = $('#toast');
+
+// ── Utilities ──
+function uid() {
+  return crypto.randomUUID();
+}
+
+function encodeBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+function decodeBase64(str) {
+  const bin = atob(str);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf;
+}
+
+function avatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.remove('hidden');
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.classList.add('hidden'), 300);
+  }, 2200);
+}
+
+function setSaveStatus(state) {
+  saveStatus.className = `save-status ${state}`;
+  const labels = { saved: 'Saved', saving: 'Saving…', error: 'Save failed' };
+  saveStatus.textContent = labels[state] || state;
+}
+
+// ── Crypto ──
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encrypt(data, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const enc = new TextEncoder();
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    enc.encode(JSON.stringify(data))
+  );
+  return {
+    salt: encodeBase64(salt),
+    iv: encodeBase64(iv),
+    data: encodeBase64(ciphertext),
+    version: 1,
+  };
+}
+
+async function decrypt(blob, password) {
+  const salt = decodeBase64(blob.salt);
+  const iv = decodeBase64(blob.iv);
+  const ciphertext = decodeBase64(blob.data);
+  const key = await deriveKey(password, salt);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    ciphertext
+  );
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+function normalizeUsername(name) {
+  return name.trim().toLowerCase();
+}
+
+function userStorageKey(username) {
+  return `secure_vault_${normalizeUsername(username)}`;
+}
+
+function getUsersList() {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_INDEX_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveUsersList(users) {
+  localStorage.setItem(USERS_INDEX_KEY, JSON.stringify(users));
+}
+
+function addUserToIndex(displayName) {
+  const key = normalizeUsername(displayName);
+  const users = getUsersList();
+  if (!users.some((u) => u.key === key)) {
+    users.push({ key, displayName: displayName.trim() });
+    saveUsersList(users);
+  }
+}
+
+function getUserDisplayName(username) {
+  const key = normalizeUsername(username);
+  const user = getUsersList().find((u) => u.key === key);
+  return user?.displayName || username.trim();
+}
+
+function hasStoredVault(username) {
+  if (!username.trim()) return false;
+  return localStorage.getItem(userStorageKey(username)) !== null;
+}
+
+function hasLegacyVault() {
+  return localStorage.getItem(LEGACY_STORAGE_KEY) !== null;
+}
+
+function updateLockMode() {
+  const username = usernameInput.value.trim();
+  const userExists = username && hasStoredVault(username);
+  const isLegacy = username && !userExists && hasLegacyVault() && getUsersList().length === 0;
+  const isNew = username && !userExists && !isLegacy;
+
+  if (isNew) {
+    confirmPasswordGroup.classList.remove('hidden');
+    unlockBtn.textContent = 'Create Vault';
+  } else {
+    confirmPasswordGroup.classList.add('hidden');
+    unlockBtn.textContent = isLegacy ? 'Migrate to Username' : 'Unlock Vault';
+  }
+}
+
+function renderUserChips() {
+  const users = getUsersList();
+  userChipsEl.innerHTML = '';
+
+  if (users.length === 0) {
+    existingUsersEl.classList.add('hidden');
+    return;
+  }
+
+  existingUsersEl.classList.remove('hidden');
+  users.forEach((user) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'user-chip';
+    const initial = user.displayName.charAt(0).toUpperCase();
+    const color = avatarColor(user.displayName);
+    chip.innerHTML = `
+      <span class="user-chip-avatar" style="background:${color}">${initial}</span>
+      ${escapeHtml(user.displayName)}
+    `;
+    chip.addEventListener('click', () => {
+      usernameInput.value = user.displayName;
+      updateLockMode();
+      masterPasswordInput.focus();
+    });
+    userChipsEl.appendChild(chip);
+  });
+}
+
+async function saveVault() {
+  if (!masterPassword || !currentUsername) return;
+  setSaveStatus('saving');
+  try {
+    const encrypted = await encrypt(vault, masterPassword);
+    localStorage.setItem(userStorageKey(currentUsername), JSON.stringify(encrypted));
+    localStorage.setItem(LAST_USER_KEY, normalizeUsername(currentUsername));
+    setSaveStatus('saved');
+  } catch {
+    setSaveStatus('error');
+    showToast('Failed to save vault');
+  }
+}
+
+function scheduleSave() {
+  setSaveStatus('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveVault, 400);
+}
+
+// ── Vault operations ──
+function defaultFields() {
+  return [
+    { id: uid(), label: 'Username', value: '', secret: false },
+    { id: uid(), label: 'Password', value: '', secret: true },
+    { id: uid(), label: 'URL', value: '', secret: false },
+    { id: uid(), label: 'Notes', value: '', secret: false },
+  ];
+}
+
+function createApplication(name = 'New Application') {
+  return {
+    id: uid(),
+    name,
+    fields: defaultFields(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+function getFilteredApps() {
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return vault.applications;
+  return vault.applications.filter((app) => {
+    if (app.name.toLowerCase().includes(q)) return true;
+    return app.fields.some(
+      (f) => f.label.toLowerCase().includes(q) || f.value.toLowerCase().includes(q)
+    );
+  });
+}
+
+function generatePassword(length = 20) {
+  const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+  const arr = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(arr, (b) => chars[b % chars.length]).join('');
+}
+
+// ── Lock / Unlock ──
+function showLockScreen() {
+  masterPassword = '';
+  currentUsername = '';
+  vault = { applications: [] };
+  lockScreen.classList.remove('hidden');
+  appEl.classList.add('hidden');
+  usernameInput.value = '';
+  masterPasswordInput.value = '';
+  confirmPasswordInput.value = '';
+  lockError.classList.add('hidden');
+  currentUserBadge.textContent = '';
+  currentUserBadge.dataset.initial = '';
+
+  renderUserChips();
+
+  const lastUserKey = localStorage.getItem(LAST_USER_KEY);
+  if (lastUserKey) {
+    const lastUser = getUsersList().find((u) => u.key === lastUserKey);
+    if (lastUser) usernameInput.value = lastUser.displayName;
+  }
+
+  updateLockMode();
+  usernameInput.focus();
+}
+
+function showApp() {
+  lockScreen.classList.add('hidden');
+  appEl.classList.remove('hidden');
+  const displayName = getUserDisplayName(currentUsername);
+  currentUserBadge.textContent = displayName;
+  currentUserBadge.dataset.initial = displayName.charAt(0).toUpperCase();
+  currentUserBadge.style.setProperty('--badge-color', avatarColor(displayName));
+  render();
+  searchInput.focus();
+}
+
+async function handleUnlock(e) {
+  e.preventDefault();
+  const username = usernameInput.value.trim();
+  const password = masterPasswordInput.value;
+  const userExists = hasStoredVault(username);
+  const isLegacy = !userExists && hasLegacyVault() && getUsersList().length === 0;
+  const isNew = !userExists && !isLegacy;
+
+  lockError.classList.add('hidden');
+
+  if (!username || username.length < 2) {
+    lockError.textContent = 'Username must be at least 2 characters.';
+    lockError.classList.remove('hidden');
+    return;
+  }
+
+  if (!password || password.length < 8) {
+    lockError.textContent = 'Master password must be at least 8 characters.';
+    lockError.classList.remove('hidden');
+    return;
+  }
+
+  if (isNew) {
+    if (password !== confirmPasswordInput.value) {
+      lockError.textContent = 'Passwords do not match.';
+      lockError.classList.remove('hidden');
+      return;
+    }
+    currentUsername = username;
+    masterPassword = password;
+    vault = { applications: [] };
+    addUserToIndex(username);
+    await saveVault();
+    showApp();
+    showToast(`Vault created for ${getUserDisplayName(username)}`);
+    return;
+  }
+
+  try {
+    let stored;
+    if (isLegacy) {
+      stored = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+    } else {
+      stored = JSON.parse(localStorage.getItem(userStorageKey(username)));
+    }
+
+    vault = await decrypt(stored, password);
+    if (!vault.applications) vault.applications = [];
+
+    currentUsername = username;
+    masterPassword = password;
+
+    if (isLegacy) {
+      addUserToIndex(username);
+      await saveVault();
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      showToast('Vault migrated to your username');
+    }
+
+    showApp();
+  } catch {
+    lockError.textContent = isLegacy || userExists
+      ? 'Incorrect master password.'
+      : 'Could not unlock vault. Check username and password.';
+    lockError.classList.remove('hidden');
+  }
+}
+
+function lockVault() {
+  clearTimeout(saveTimer);
+  showLockScreen();
+}
+
+// ── Rendering ──
+function render() {
+  const filtered = getFilteredApps();
+  const total = vault.applications.length;
+
+  appCount.textContent = `${total} application${total !== 1 ? 's' : ''}`;
+
+  const isEmpty = total === 0;
+  const noMatch = !isEmpty && filtered.length === 0;
+
+  emptyState.classList.toggle('hidden', !isEmpty);
+  noResults.classList.toggle('hidden', !noMatch);
+  appGrid.classList.toggle('hidden', isEmpty || noMatch);
+
+  appGrid.innerHTML = '';
+  filtered.forEach((app, i) => {
+    appGrid.appendChild(buildAppCard(app, i));
+  });
+}
+
+function buildAppCard(app, index) {
+  const card = document.createElement('article');
+  card.className = 'app-card';
+  card.dataset.id = app.id;
+  card.style.animationDelay = `${index * 50}ms`;
+
+  const initial = (app.name || '?').charAt(0).toUpperCase();
+  const color = avatarColor(app.name || '');
+
+  card.innerHTML = `
+    <div class="app-card-header">
+      <div class="app-avatar" style="background:${color}">${initial}</div>
+      <div class="app-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="Application name">${escapeHtml(app.name)}</div>
+      <div class="app-card-actions">
+        <button class="icon-btn delete-app-btn" title="Delete application" aria-label="Delete application">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="app-card-body"></div>
+  `;
+
+  const nameEl = card.querySelector('.app-name');
+  const body = card.querySelector('.app-card-body');
+
+  nameEl.addEventListener('input', () => {
+    app.name = nameEl.textContent.trim() || 'Untitled';
+    app.updatedAt = Date.now();
+    card.querySelector('.app-avatar').textContent = app.name.charAt(0).toUpperCase();
+    card.querySelector('.app-avatar').style.background = avatarColor(app.name);
+    scheduleSave();
+  });
+
+  nameEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+  });
+
+  app.fields.forEach((field) => {
+    body.appendChild(buildFieldRow(app, field));
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-field-btn';
+  addBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add field`;
+  addBtn.addEventListener('click', () => {
+    const field = { id: uid(), label: 'Custom', value: '', secret: false };
+    app.fields.push(field);
+    app.updatedAt = Date.now();
+    body.insertBefore(buildFieldRow(app, field), addBtn);
+    scheduleSave();
+  });
+  body.appendChild(addBtn);
+
+  card.querySelector('.delete-app-btn').addEventListener('click', () => {
+    if (confirm(`Delete "${app.name}"? This cannot be undone.`)) {
+      vault.applications = vault.applications.filter((a) => a.id !== app.id);
+      scheduleSave();
+      render();
+      showToast('Application deleted');
+    }
+  });
+
+  return card;
+}
+
+function buildFieldRow(app, field) {
+  const row = document.createElement('div');
+  row.className = 'field-row';
+  row.dataset.fieldId = field.id;
+
+  row.innerHTML = `
+    <div class="field-label" contenteditable="true" spellcheck="false" role="textbox" aria-label="Field label">${escapeHtml(field.label)}</div>
+    <div class="field-value-wrap">
+      <div class="field-value${field.secret ? ' secret' : ''}" contenteditable="true" spellcheck="false" role="textbox" aria-label="Field value">${escapeHtml(field.value)}</div>
+    </div>
+    <div class="field-actions">
+      ${field.secret ? `
+        <button class="icon-btn toggle-secret-btn" title="Show/hide" aria-label="Toggle visibility">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <button class="icon-btn generate-btn" title="Generate password" aria-label="Generate password">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2M3 21l2-2M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg>
+        </button>
+      ` : ''}
+      <button class="icon-btn copy-btn" title="Copy" aria-label="Copy value">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      </button>
+      <button class="icon-btn delete-field-btn" title="Remove field" aria-label="Remove field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `;
+
+  const labelEl = row.querySelector('.field-label');
+  const valueEl = row.querySelector('.field-value');
+
+  labelEl.addEventListener('input', () => {
+    field.label = labelEl.textContent.trim() || 'Field';
+    app.updatedAt = Date.now();
+    scheduleSave();
+  });
+
+  labelEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); labelEl.blur(); }
+  });
+
+  valueEl.addEventListener('input', () => {
+    field.value = valueEl.textContent;
+    app.updatedAt = Date.now();
+    scheduleSave();
+  });
+
+  valueEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); valueEl.blur(); }
+  });
+
+  const toggleBtn = row.querySelector('.toggle-secret-btn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      valueEl.classList.toggle('revealed');
+    });
+  }
+
+  const genBtn = row.querySelector('.generate-btn');
+  if (genBtn) {
+    genBtn.addEventListener('click', () => {
+      field.value = generatePassword();
+      valueEl.textContent = field.value;
+      valueEl.classList.add('revealed');
+      app.updatedAt = Date.now();
+      scheduleSave();
+      showToast('Password generated');
+    });
+  }
+
+  row.querySelector('.copy-btn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(field.value);
+      showToast('Copied to clipboard');
+    } catch {
+      showToast('Copy failed');
+    }
+  });
+
+  row.querySelector('.delete-field-btn').addEventListener('click', () => {
+    if (app.fields.length <= 1) {
+      showToast('Each application needs at least one field');
+      return;
+    }
+    app.fields = app.fields.filter((f) => f.id !== field.id);
+    app.updatedAt = Date.now();
+    row.remove();
+    scheduleSave();
+  });
+
+  return row;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Export / Import ──
+async function exportVault() {
+  const stored = localStorage.getItem(userStorageKey(currentUsername));
+  if (!stored) return;
+  const slug = normalizeUsername(currentUsername);
+  const blob = new Blob([stored], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `secure-vault-${slug}-${new Date().toISOString().slice(0, 10)}.vault`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+}
+
+async function importVault(file) {
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!parsed.salt || !parsed.iv || !parsed.data) throw new Error('Invalid format');
+
+    const testVault = await decrypt(parsed, masterPassword);
+    localStorage.setItem(userStorageKey(currentUsername), text);
+    vault = testVault;
+    if (!vault.applications) vault.applications = [];
+    render();
+    showToast('Backup imported successfully');
+  } catch {
+    showToast('Import failed — wrong password or invalid file');
+  }
+}
+
+// ── Event listeners ──
+unlockForm.addEventListener('submit', handleUnlock);
+
+usernameInput.addEventListener('input', updateLockMode);
+
+document.querySelectorAll('.toggle-password').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+});
+
+$('#add-app-btn').addEventListener('click', addNewApp);
+$('#empty-add-btn').addEventListener('click', addNewApp);
+
+function addNewApp() {
+  const app = createApplication();
+  vault.applications.unshift(app);
+  scheduleSave();
+  searchQuery = '';
+  searchInput.value = '';
+  render();
+  showToast('Application created');
+
+  requestAnimationFrame(() => {
+    const card = appGrid.querySelector(`[data-id="${app.id}"]`);
+    if (card) {
+      const nameEl = card.querySelector('.app-name');
+      nameEl.focus();
+      document.getSelection()?.selectAllChildren(nameEl);
+    }
+  });
+}
+
+searchInput.addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  render();
+});
+
+$('#lock-btn').addEventListener('click', lockVault);
+
+$('#export-btn').addEventListener('click', exportVault);
+
+$('#import-btn').addEventListener('click', () => $('#import-file').click());
+
+$('#import-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) importVault(file);
+  e.target.value = '';
+});
+
+document.addEventListener('keydown', (e) => {
+  const appOpen = lockScreen.classList.contains('hidden') && !appEl.classList.contains('hidden');
+  if (e.key === '/' && appOpen && document.activeElement !== searchInput) {
+    if (document.activeElement?.isContentEditable) return;
+    e.preventDefault();
+    searchInput.focus();
+  }
+});
+
+// ── Init ──
+showLockScreen();
+
+</script>
+</body>
+</html>
