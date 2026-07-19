@@ -501,7 +501,7 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 18px;
+  padding: 12px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elevated);
 }
@@ -558,7 +558,7 @@ input:focus {
 .app-card:hover .app-card-actions { opacity: 1; }
 
 .app-card-body {
-  padding: 12px 18px 16px;
+  padding-bottom: 5px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -567,7 +567,7 @@ input:focus {
 /* ── Field rows ── */
 .field-row {
   display: grid;
-  grid-template-columns: 110px 1fr auto;
+  grid-template-columns: 16px 110px 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 8px 0;
@@ -688,6 +688,108 @@ input:focus {
 
 .add-field-btn svg { width: 14px; height: 14px; }
 
+/* ── Field type picker (choose normal vs sensitive on add) ── */
+.field-type-picker { margin-top: 8px; animation: fadeUp 0.2s ease; }
+
+.field-type-options { display: flex; gap: 8px; }
+
+.field-type-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 12px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.field-type-option:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.field-type-option svg { width: 18px; height: 18px; }
+
+.field-type-option .field-type-label { font-size: 0.75rem; font-weight: 600; color: var(--text-primary); }
+
+.field-type-option .field-type-hint { font-size: 0.6875rem; color: var(--text-muted); line-height: 1.35; }
+
+.field-type-cancel {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-align: center;
+  transition: color var(--transition);
+}
+
+.field-type-cancel:hover { color: var(--text-secondary); }
+
+/* ── Drag & drop reordering ── */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-handle:hover { color: var(--text-secondary); }
+.drag-handle:active { cursor: grabbing; }
+
+.field-drag-handle {
+  width: 16px;
+  height: 100%;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.field-row:hover .field-drag-handle { opacity: 1; }
+
+.field-drag-handle svg { width: 12px; height: 12px; }
+
+.app-drag-handle {
+  width: 20px;
+  height: 20px;
+  opacity: 0.5;
+  transition: opacity var(--transition);
+}
+
+.app-card-header:hover .app-drag-handle { opacity: 1; }
+
+.app-drag-handle svg { width: 16px; height: 16px; }
+
+.dragging { opacity: 0.4; }
+
+.app-card.dragging { cursor: grabbing; }
+
+.field-row,
+.app-card { -webkit-user-drag: element; }
+
+.field-label,
+.field-value,
+.app-name { -webkit-user-drag: none; }
+
 /* ── Toast ── */
 .toast {
   position: fixed;
@@ -739,6 +841,10 @@ input:focus {
 
   .field-actions,
   .app-card-actions { opacity: 1; }
+
+  .drag-handle { display: none; }
+
+  .field-row { grid-template-columns: 1fr; }
 
   .search-kbd { display: none; }
 }
@@ -1271,6 +1377,7 @@ function buildAppCard(app, index) {
   const card = document.createElement('article');
   card.className = 'app-card';
   card.dataset.id = app.id;
+  card.draggable = true;
   card.style.animationDelay = `${index * 50}ms`;
 
   const initial = (app.name || '?').charAt(0).toUpperCase();
@@ -1278,6 +1385,9 @@ function buildAppCard(app, index) {
 
   card.innerHTML = `
     <div class="app-card-header">
+      <span class="drag-handle app-drag-handle" title="Drag to reorder" aria-label="Drag to reorder application" role="button" tabindex="-1">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+      </span>
       <div class="app-avatar" style="background:${color}">${initial}</div>
       <div class="app-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="Application name">${escapeHtml(app.name)}</div>
       <div class="app-card-actions">
@@ -1288,6 +1398,28 @@ function buildAppCard(app, index) {
     </div>
     <div class="app-card-body"></div>
   `;
+
+  card.addEventListener('dragstart', (e) => {
+    if (!e.target.closest('.app-drag-handle')) { e.preventDefault(); return; }
+    if (searchQuery.trim()) {
+      e.preventDefault();
+      showToast('Clear search to reorder applications');
+      return;
+    }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', app.id);
+    requestAnimationFrame(() => card.classList.add('dragging'));
+  });
+
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    const newOrder = [...appGrid.querySelectorAll('.app-card')].map((c) => c.dataset.id);
+    vault.applications = newOrder
+      .map((id) => vault.applications.find((a) => a.id === id))
+      .concat(vault.applications.filter((a) => !newOrder.includes(a.id)));
+    scheduleSave();
+    showToast('Application order updated');
+  });
 
   const nameEl = card.querySelector('.app-name');
   const body = card.querySelector('.app-card-body');
@@ -1308,17 +1440,71 @@ function buildAppCard(app, index) {
     body.appendChild(buildFieldRow(app, field));
   });
 
+  body.addEventListener('dragover', (e) => {
+    const dragging = body.querySelector('.field-row.dragging');
+    if (!dragging) return;
+    e.preventDefault();
+    const afterElement = getFieldDragAfterElement(body, e.clientY);
+    body.insertBefore(dragging, afterElement || addBtn);
+  });
+
+  body.addEventListener('drop', (e) => e.preventDefault());
+
   const addBtn = document.createElement('button');
+  addBtn.type = 'button';
   addBtn.className = 'add-field-btn';
   addBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add field`;
+
+  const picker = document.createElement('div');
+  picker.className = 'field-type-picker hidden';
+  picker.innerHTML = `
+    <div class="field-type-options">
+      <button type="button" class="field-type-option" data-secret="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="field-type-label">Normal field</span>
+        <span class="field-type-hint">Plain text, like a username or URL</span>
+      </button>
+      <button type="button" class="field-type-option" data-secret="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+        <span class="field-type-label">Secret field</span>
+        <span class="field-type-hint">Masked, like a password, with reveal &amp; generate</span>
+      </button>
+    </div>
+    <button type="button" class="field-type-cancel">Cancel</button>
+  `;
+
+  function closeFieldTypePicker() {
+    picker.classList.add('hidden');
+    addBtn.classList.remove('hidden');
+  }
+
   addBtn.addEventListener('click', () => {
-    const field = { id: uid(), label: 'Custom', value: '', secret: false };
-    app.fields.push(field);
-    app.updatedAt = Date.now();
-    body.insertBefore(buildFieldRow(app, field), addBtn);
-    scheduleSave();
+    addBtn.classList.add('hidden');
+    picker.classList.remove('hidden');
   });
+
+  picker.querySelector('.field-type-cancel').addEventListener('click', closeFieldTypePicker);
+
+  picker.querySelectorAll('.field-type-option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      const secret = opt.dataset.secret === 'true';
+      const field = { id: uid(), label: secret ? 'Custom secret' : 'Custom', value: '', secret };
+      app.fields.push(field);
+      app.updatedAt = Date.now();
+      const row = buildFieldRow(app, field);
+      body.insertBefore(row, addBtn);
+      closeFieldTypePicker();
+      scheduleSave();
+      requestAnimationFrame(() => {
+        const labelEl = row.querySelector('.field-label');
+        labelEl.focus();
+        document.getSelection()?.selectAllChildren(labelEl);
+      });
+    });
+  });
+
   body.appendChild(addBtn);
+  body.appendChild(picker);
 
   card.querySelector('.delete-app-btn').addEventListener('click', () => {
     if (confirm(`Delete "${app.name}"? This cannot be undone.`)) {
@@ -1332,12 +1518,31 @@ function buildAppCard(app, index) {
   return card;
 }
 
+function getFieldDragAfterElement(container, y) {
+  const rows = [...container.querySelectorAll('.field-row:not(.dragging)')];
+  return rows.reduce(
+    (closest, row) => {
+      const box = row.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: row };
+      }
+      return closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY, element: null }
+  ).element;
+}
+
 function buildFieldRow(app, field) {
   const row = document.createElement('div');
   row.className = 'field-row';
   row.dataset.fieldId = field.id;
+  row.draggable = true;
 
   row.innerHTML = `
+    <span class="drag-handle field-drag-handle" title="Drag to reorder" aria-label="Drag to reorder field" role="button" tabindex="-1">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+    </span>
     <div class="field-label" contenteditable="true" spellcheck="false" role="textbox" aria-label="Field label">${escapeHtml(field.label)}</div>
     <div class="field-value-wrap">
       <div class="field-value${field.secret ? ' secret' : ''}" contenteditable="true" spellcheck="false" role="textbox" aria-label="Field value">${escapeHtml(field.value)}</div>
@@ -1359,6 +1564,23 @@ function buildFieldRow(app, field) {
       </button>
     </div>
   `;
+
+  row.addEventListener('dragstart', (e) => {
+    if (!e.target.closest('.field-drag-handle')) { e.preventDefault(); return; }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', field.id);
+    requestAnimationFrame(() => row.classList.add('dragging'));
+  });
+
+  row.addEventListener('dragend', () => {
+    row.classList.remove('dragging');
+    const container = row.parentElement;
+    if (!container) return;
+    const newOrder = [...container.querySelectorAll('.field-row')].map((r) => r.dataset.fieldId);
+    app.fields = newOrder.map((id) => app.fields.find((f) => f.id === id));
+    app.updatedAt = Date.now();
+    scheduleSave();
+  });
 
   const labelEl = row.querySelector('.field-label');
   const valueEl = row.querySelector('.field-value');
@@ -1501,6 +1723,37 @@ searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
   render();
 });
+
+appGrid.addEventListener('dragover', (e) => {
+  const dragging = appGrid.querySelector('.app-card.dragging');
+  if (!dragging) return;
+  e.preventDefault();
+  const afterElement = getCardDragAfterElement(appGrid, e.clientX, e.clientY);
+  if (afterElement == null) {
+    appGrid.appendChild(dragging);
+  } else {
+    appGrid.insertBefore(dragging, afterElement);
+  }
+});
+
+appGrid.addEventListener('drop', (e) => e.preventDefault());
+
+function getCardDragAfterElement(container, x, y) {
+  const cards = [...container.querySelectorAll('.app-card:not(.dragging)')];
+  return cards.reduce(
+    (closest, card) => {
+      const box = card.getBoundingClientRect();
+      const withinRow = y >= box.top && y <= box.bottom;
+      // Same row: order by horizontal position. Different row: order by vertical position (weighted heavier).
+      const offset = withinRow ? x - (box.left + box.width / 2) : (y - (box.top + box.height / 2)) * 1000;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: card };
+      }
+      return closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY, element: null }
+  ).element;
+}
 
 $('#lock-btn').addEventListener('click', lockVault);
 
